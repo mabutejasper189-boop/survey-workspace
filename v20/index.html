@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survey Workspace Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="style.css?v=1.2">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<header class="header-actions">
+  <div class="controls">
+    <button type="button" id="btnAddNewLot" class="add-lot-btn">+ Add New Lot</button>
+    <button type="button" id="btnSaveFile" class="save-btn">Save to Logs</button>
+    <button type="button" id="btnExportSW" class="action-btn-neutral">Save-as</button>
+    <button type="button" id="btnImportSW" class="action-btn-neutral">Open</button>
+    <input type="file" id="fileImportSW" accept=".sw" style="display: none;">
+    <button type="button" id="btnClearData" class="danger-btn">Clear All</button>
+  </div>
+  <div class="toggle-controls">
+    <button type="button" id="btnThemeToggle" class="action-btn-neutral">🌙 Theme</button>
+    <button type="button" id="btnExportDxf" class="action-btn-neutral">Export DXF</button>
+    <button type="button" id="btnToggleSketch">Live Sketch Plan</button>
+    <button type="button" id="btnTogglePdf" class="generate-pdf-btn">Generate PDF Plan</button>
+    <button type="button" id="btnToggleLog">Log Files</button>
+  </div>
+</header>
+
+<div class="app-container">
+  <main class="main-section">
+    <section class="lot-info-container">
+      <div class="info-group">
+        <label for="lotOwner">Lot Owner Name</label>
+        <input type="text" id="lotOwner" value="">
+      </div>
+      <div class="info-group">
+        <label for="lotNumber">Project / Main Lot Number</label>
+        <input type="text" id="lotNumber" value="Multiple Lots">
+      </div>
+      <div class="info-group">
+        <label for="lotLocation">Location</label>
+        <input type="text" id="lotLocation" value="Cebu City, Philippines">
+      </div>
+    </section>
+    
+    <section id="workspaceContainer">
+    </section>
+  </main>
+
+  <aside class="side-panel" id="logPanel">
+    <h3 class="panel-header">Saved Files</h3>
+    <div id="logList"></div>
+  </aside>
+</div>
+
+<div id="sketchFloating" class="floating-window sketch-window" role="dialog" aria-modal="false" aria-labelledby="sketchDragHeader">
+  <header class="floating-header" id="sketchDragHeader">
+    <span>Multi-Lot Sketch Plan</span>
+    <div class="header-btns"><button type="button" class="close-float-btn window-closer" aria-label="Close window">✖</button></div>
+  </header>
+  <div class="floating-content">
+    <div class="canvas-wrapper">
+      <canvas id="sketchCanvas"></canvas>
+      
+      <div class="sketch-toolbar">
+        <button type="button" class="tool-btn active" data-tool="select" title="Select / Pan (Drag to move)">🖱️</button>
+        <button type="button" class="tool-btn" data-tool="measure" title="Measure (Click 2 points)">📏</button>
+        <button type="button" class="tool-btn" data-tool="line" title="Draw Line (Click and drag)">✏️</button>
+        <button type="button" class="tool-btn toggle-btn" id="btnGridSnap" title="Toggle Grid Snap (0.5m)">🧲</button>
+        <button type="button" class="tool-btn toggle-btn" id="btnOrthoMode" title="Toggle Ortho Mode (90° Lines)">📐</button>
+        <button type="button" class="tool-btn" data-tool="text" title="Add Text (Click canvas to type)">📌</button>
+        <button type="button" class="tool-btn" data-tool="id" title="Identify Coordinate">📍</button>
+        <div style="height: 1px; background: var(--border); margin: 4px 0;"></div>
+        <button type="button" class="tool-btn" data-tool="subdivide" title="Lot Splitting (Draw split line)">✂️</button>
+        <button type="button" class="tool-btn" data-tool="intersect" title="Intersection (Click 2 points)">✖️</button>
+        <button type="button" class="tool-btn" data-tool="offset" title="ROW / Offset (Select line)">🛤️</button>
+        <button type="button" class="tool-btn" data-tool="curve" title="Draw Curve / Arc">➰</button>
+        <div style="height: 1px; background: var(--border); margin: 4px 0;"></div>
+        <button type="button" class="tool-btn active" id="btnToggleTieLines" title="Toggle Tie Lines">🔗</button>
+        <button type="button" class="tool-btn active" id="btnToggleText" title="Toggle Text Labels">🔤</button>
+        <button type="button" class="tool-btn" id="btnToggleAngles" title="Toggle Interior Angles">📐</button>
+        <button type="button" class="tool-btn active" id="btnToggleTraverse" title="Toggle Raw vs Adjusted Traverse">🔄</button>
+        <button type="button" class="tool-btn" id="btnExportPng" title="Export as PNG">🖼️</button>
+      </div>
+      <input type="text" id="sketchTextInput" style="display:none; position:absolute;" placeholder="Type label & press Enter">
+
+      <div class="zoom-controls">
+        <button type="button" id="btnZoomIn" title="Zoom In">＋</button>
+        <button type="button" id="btnZoomFit" title="Fit View / Reset">⟲</button>
+        <button type="button" id="btnZoomOut" title="Zoom Out">－</button>
+      </div>
+    </div>
+    <div class="sketch-info-bar" id="areaDisplayContainer"></div>
+  </div>
+</div>
+
+<div id="pdfFloating" class="floating-window pdf-window" role="dialog" aria-modal="false" aria-labelledby="pdfDragHeader">
+  <header class="floating-header" id="pdfDragHeader">
+    <span>Professional PDF Export</span>
+    <button type="button" class="close-float-btn window-closer" aria-label="Close window">✖</button>
+  </header>
+  <div class="floating-content pdf-content-wrapper">
+    <div class="pdf-layout">
+      <aside class="pdf-sidebar">
+        <div class="info-group">
+          <label for="pdfPaperSize">Paper Size</label>
+          <select id="pdfPaperSize">
+            <option value="a1">A1</option>
+            <option value="a3">A3</option>
+            <option value="a4" selected>A4</option>
+            <option value="legal">Legal</option>
+          </select>
+        </div>
+        <div class="info-group">
+          <label for="pdfOrientation">Orientation</label>
+          <select id="pdfOrientation">
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+        </div>
+        <div class="info-group">
+          <label for="pdfScale">Map Scale</label>
+          <select id="pdfScale">
+            <option value="auto">Auto-Fit</option>
+            <option value="100">1:100</option>
+            <option value="200">1:200</option>
+            <option value="500">1:500</option>
+            <option value="1000">1:1000</option>
+          </select>
+        </div>
+        <div class="info-group">
+          <label for="pdfIncludeTable">Include Technical Desc.</label>
+          <select id="pdfIncludeTable">
+            <option value="yes">Yes (Draw Table)</option>
+            <option value="no">No (Map Only)</option>
+          </select>
+        </div>
+        <div class="info-group">
+          <label for="pdfDrawnBy">Drawn By</label>
+          <input type="text" id="pdfDrawnBy" value="">
+        </div>
+        <div class="info-group">
+          <label for="pdfDrawnTitle">Drawn By Title</label>
+          <input type="text" id="pdfDrawnTitle" value="">
+        </div>
+        <button type="button" class="save-btn download-pdf-btn" id="btnDownloadPdf">⬇ Download PDF</button>
+      </aside>
+      <section class="pdf-preview-pane"><iframe id="pdfPreviewFrame" title="PDF Preview"></iframe></section>
+    </div>
+  </div>
+</div>
+
+<div id="textEditOverlay" class="text-edit-overlay" role="dialog" aria-modal="false">
+  <h4>Adjust Annotation Format</h4>
+  <p class="text-edit-subtext">Drag text on the canvas to move it.</p>
+  <div class="info-group">
+    <label for="editTRot">Rotation Angle Override (°)</label>
+    <input type="number" id="editTRot" placeholder="Auto aligned if empty">
+  </div>
+  <div class="info-group">
+    <label for="editTSize">Custom Font Size (pt)</label>
+    <input type="number" id="editTSize" placeholder="Default if empty">
+  </div>
+  <div class="text-edit-actions">
+    <button type="button" id="resetTextPos" class="danger-btn">Reset Pos</button>
+    <button type="button" id="cancelTextEdit" class="action-btn-neutral">Cancel</button>
+    <button type="button" id="applyTextEdit" class="save-btn">Apply</button>
+  </div>
+</div>
+
+<div id="toast" role="alert" aria-live="polite">Command copied to clipboard!</div>
+
+<template id="lotTemplate">
+  <article class="lot-card" data-title-dx="0" data-title-dy="0">
+    <header class="lot-header">
+      <h3 contenteditable="true" role="textbox" aria-label="Lot Name"></h3>
+      <div class="lot-header-actions">
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; color: var(--text-muted); cursor: pointer;" title="Hide this lot from canvas and exports">
+          <input type="checkbox" class="is-hidden-check" style="accent-color: var(--text-muted);"> Hide
+        </label>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; color: var(--text-muted); cursor: pointer;" title="Deduct this area from the total (Easement/Right of Way)">
+          <input type="checkbox" class="is-easement-check" style="accent-color: var(--danger);"> Deduct
+        </label>
+        <input type="color" class="lot-color-picker" title="Select Color" aria-label="Lot Color">
+        <button type="button" class="action-btn toggle-lot-btn" title="Collapse Lot">▼</button>
+        <button type="button" class="delete-lot-btn">🗑️ Delete Lot</button>
+      </div>
+    </header>
+    <div class="table-container survey-table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" title="Include in Sketch">Inc.</th><th scope="col">Line</th>
+            <th scope="col">North/South</th><th scope="col">Degree</th><th scope="col">Minutes</th>
+            <th scope="col">Seconds</th><th scope="col">East/West</th><th scope="col">Distance</th>
+            <th scope="col" title="Click to copy polar coordinate">Command</th><th scope="col">Act</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <footer class="lot-footer lot-footer-actions">
+      <button type="button" class="add-row-local">+ Add Row</button>
+      <div class="footer-btn-group">
+        <button type="button" class="action-btn-neutral copy-tech-desc-btn">Copy Tech Desc.</button>
+        <button type="button" class="save-btn copy-lot-cmds-btn">Copy All Commands</button>
+      </div>
+    </footer>
+  </article>
+</template>
+
+<template id="rowTemplate">
+  <tr data-dx="0" data-dy="0" data-trot="" data-tsize="" data-tech-desc="">
+    <td><input type="checkbox" class="row-check" checked aria-label="Include row"></td>
+    <td contenteditable="true" role="textbox" aria-label="Line Name"></td>
+    <td contenteditable="true" role="textbox" aria-label="North or South"></td>
+    <td contenteditable="true" role="textbox" aria-label="Degrees"></td>
+    <td contenteditable="true" role="textbox" aria-label="Minutes"></td>
+    <td contenteditable="true" role="textbox" aria-label="Seconds">00</td>
+    <td contenteditable="true" role="textbox" aria-label="East or West"></td>
+    <td contenteditable="true" role="textbox" aria-label="Distance"></td>
+    <td class="readonly-cell command-output" role="button" tabindex="0" aria-label="Copy Command"></td>
+    <td>
+      <div class="action-group">
+        <button type="button" class="action-btn copy-single-desc" aria-label="Copy Text Format" title="Copy Text Format">📄</button>
+        <button type="button" class="action-btn" aria-label="Delete Row">🗑️</button>
+      </div>
+    </td>
+  </tr>
+</template>
+<script src="state-history.js?v=2.0"></script>
+<script src="geometry-math.js?v=2.0"></script>
+<script src="data-parser.js?v=2.0"></script>
+<script src="lot-manager.js?v=2.0"></script>
+
+<!-- Renderers and Exporters -->
+<script src="canvas.js?v=2.0"></script>
+<script src="drawing-tools.js?v=2.0"></script>
+<script src="pdf-export.js?v=2.0"></script>
+<script src="dxf-export.js?v=2.0"></script>
+
+<!-- Storage and Main Application Logic -->
+<script src="storage.js?v=2.0"></script>
+<script src="save-as.js?v=2.0"></script>
+<script src="open.js?v=2.0"></script>
+<script src="app.js?v=2.0"></script>
+</body>
+</html>
